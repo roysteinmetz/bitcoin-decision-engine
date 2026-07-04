@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitcoin Decision Engine</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #08111f;
+      color: white;
+      padding: 20px;
+    }
+    .app {
+      max-width: 900px;
+      margin: auto;
+    }
+    .card {
+      background: #111c32;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+    }
+    .big {
+      font-size: 36px;
+      font-weight: bold;
+    }
+    .green { color: #24d18f; }
+    .yellow { color: #ffd166; }
+    .red { color: #ff5c7a; }
+    button {
+      background: #2f7cff;
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .bar {
+      height: 14px;
+      background: #26344f;
+      border-radius: 50px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff5c7a, #ffd166, #24d18f);
+    }
+    li {
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Bitcoin Decision Engine</h1>
+
+    <div class="card">
+      <div>מחיר ביטקוין</div>
+      <div id="price" class="big">טוען...</div>
+      <div id="change"></div>
+    </div>
+
+    <div class="card">
+      <div>החלטת מערכת</div>
+      <div id="decision" class="big yellow">WAIT</div>
+    </div>
+
+    <div class="card">
+      <div>ציון כללי</div>
+      <div><span id="score" class="big">--</span> / 100</div>
+      <div class="bar"><div id="scoreFill" class="fill"></div></div>
+    </div>
+
+    <div class="card">
+      <div>הסבר</div>
+      <ul id="explain"></ul>
+    </div>
+
+    <button onclick="loadData()">רענון נתונים</button>
+  </div>
+
+  <script>
+    async function loadData() {
+      const priceEl = document.getElementById("price");
+      const changeEl = document.getElementById("change");
+      const decisionEl = document.getElementById("decision");
+      const scoreEl = document.getElementById("score");
+      const fillEl = document.getElementById("scoreFill");
+      const explainEl = document.getElementById("explain");
+
+      priceEl.textContent = "טוען...";
+
+      try {
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true"
+        );
+        const data = await res.json();
+
+        const price = data.bitcoin.usd;
+        const change = data.bitcoin.usd_24h_change;
+
+        let score = 50;
+        let reasons = [];
+
+        if (change < -5) {
+          score += 18;
+          reasons.push("הביטקוין ירד חזק ב־24 שעות — ייתכן אזור כניסה מעניין, אבל התנודתיות גבוהה.");
+        } else if (change < -2) {
+          score += 10;
+          reasons.push("יש ירידה יומית מתונה — מצב שיכול להתאים למעקב לקנייה מדורגת.");
+        } else if (change > 5) {
+          score -= 15;
+          reasons.push("הביטקוין עלה חזק ב־24 שעות — סיכון לקנייה אחרי תנועה חדה.");
+        } else {
+          reasons.push("אין תנועה חריגה ב־24 שעות — השוק במצב ניטרלי יחסית.");
+        }
+
+        if (score >= 70) {
+          decisionEl.textContent = "BUY / WATCH";
+          decisionEl.className = "big green";
+        } else if (score <= 40) {
+          decisionEl.textContent = "WAIT";
+          decisionEl.className = "big red";
+        } else {
+          decisionEl.textContent = "WATCH";
+          decisionEl.className = "big yellow";
+        }
+
+        priceEl.textContent = "$" + price.toLocaleString();
+        changeEl.textContent = "שינוי 24 שעות: " + change.toFixed(2) + "%";
+        scoreEl.textContent = score;
+        fillEl.style.width = score + "%";
+
+        explainEl.innerHTML = "";
+        reasons.forEach(function(reason) {
+          const li = document.createElement("li");
+          li.textContent = reason;
+          explainEl.appendChild(li);
+        });
+
+      } catch (e) {
+        priceEl.textContent = "שגיאה בטעינת נתונים";
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
